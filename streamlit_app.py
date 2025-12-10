@@ -1,10 +1,16 @@
 import streamlit as st
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
+import pandas as pd
+from datetime import datetime
+import os
 
 st.set_page_config(page_title="AI Story Generator", page_icon="📚", layout="centered")
-st.title("📚 AI Story Generator (BLOOM-1B1 Streaming)")
-st.write("Generate stories live as BLOOM-1B1 writes them! Adjust the settings and see output as it comes.")
+st.title("📚 AI Story Generator (BLOOM-1B1 Streaming + Auto Save)")
+st.write("Generate stories live as BLOOM-1B1 writes them! Each story is automatically saved.")
+
+# --- File to save stories ---
+SAVE_FILE = "generated_stories.csv"
 
 # --- Load BLOOM-1B1 model once ---
 @st.cache_resource(show_spinner=True)
@@ -41,8 +47,8 @@ if st.button("Generate Story"):
         input_ids = tokenizer(prompt, return_tensors="pt").input_ids
         max_new_tokens = length * 2
 
-        # Generate with streaming
-        for i in range(0, max_new_tokens, 20):  # generate 20 tokens at a time
+        # Generate in chunks to show streaming effect
+        for i in range(0, max_new_tokens, 20):
             outputs = model.generate(
                 input_ids,
                 max_new_tokens=i+20,
@@ -52,9 +58,34 @@ if st.button("Generate Story"):
                 pad_token_id=tokenizer.eos_token_id
             )
             decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
-            # Only keep new content
             generated_text = decoded
             placeholder.markdown(f"**Your Generated Story:**\n\n{generated_text}")
-            # Streamlit will refresh the placeholder each chunk
 
     st.success("Story generation complete!")
+
+    # --- Save to CSV ---
+    story_entry = {
+        "Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "Title": title,
+        "Main Character": main_character,
+        "Genre": genre,
+        "Tone": tone,
+        "Story": generated_text
+    }
+
+    if os.path.exists(SAVE_FILE):
+        df = pd.read_csv(SAVE_FILE)
+        df = pd.concat([df, pd.DataFrame([story_entry])], ignore_index=True)
+    else:
+        df = pd.DataFrame([story_entry])
+
+    df.to_csv(SAVE_FILE, index=False)
+    st.info(f"Story saved to {SAVE_FILE}")
+
+# --- Optional: Display previously generated stories ---
+if st.checkbox("Show Previous Stories"):
+    if os.path.exists(SAVE_FILE):
+        df = pd.read_csv(SAVE_FILE)
+        st.dataframe(df)
+    else:
+        st.write("No stories generated yet.")
