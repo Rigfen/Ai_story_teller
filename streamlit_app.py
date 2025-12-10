@@ -1,26 +1,35 @@
 import streamlit as st
-
-import torch
 import pandas as pd
 from datetime import datetime
 import os
 
+# --- Page Setup ---
 st.set_page_config(page_title="AI Story Generator", page_icon="📚", layout="centered")
-st.title("📚 AI Story Generator (BLOOM-1B1 Multi-Story)")
+st.title("📚 AI Story Generator (BLOOM-1B1 Multi-Chapter)")
 st.write("Generate multiple stories or chapters live with BLOOM-1B1! Each story is saved and downloadable.")
 
 SAVE_FILE = "generated_stories.csv"
+CACHE_DIR = "./bloom_cache"  # Local cache for model
 
-# --- Load model ---
+# --- Load BLOOM-1B1 safely ---
 @st.cache_resource(show_spinner=True)
 def load_model():
-    tokenizer = AutoTokenizer.from_pretrained("bigscience/bloom-1b1")
-    model = AutoModelForCausalLM.from_pretrained("bigscience/bloom-1b1")
-    return tokenizer, model
+    try:
+        from transformers import AutoTokenizer, AutoModelForCausalLM
+        import torch
+
+        tokenizer = AutoTokenizer.from_pretrained("bigscience/bloom-1b1", cache_dir=CACHE_DIR)
+        model = AutoModelForCausalLM.from_pretrained("bigscience/bloom-1b1", cache_dir=CACHE_DIR)
+        return tokenizer, model
+    except Exception as e:
+        st.error(f"Error loading BLOOM-1B1 model: {e}")
+        return None, None
 
 tokenizer, model = load_model()
+if tokenizer is None or model is None:
+    st.stop()  # Stop the app if model didn't load
 
-# --- Safe CSV save ---
+# --- Safe CSV saving function ---
 def save_story(entry):
     try:
         if os.path.exists(SAVE_FILE):
@@ -32,18 +41,16 @@ def save_story(entry):
     except Exception as e:
         st.error(f"Error saving story: {e}")
 
-# --- User inputs ---
+# --- User Inputs ---
 title = st.text_input("Story/Book Title", "The Lost Kingdom")
 main_character = st.text_input("Main Character Name", "Aria")
 genre = st.selectbox("Genre", ["Fantasy", "Sci-Fi", "Horror", "Romance", "Adventure", "Mystery"])
 tone = st.selectbox("Tone", ["Lighthearted", "Serious", "Dark", "Funny", "Epic"])
 length = st.slider("Story/Chapter Length (words)", 50, 800, 300)
-num_chapters = st.slider("Number of Stories / Chapters", 1, 5, 1)  # Multi-story / chapters
+num_chapters = st.slider("Number of Stories / Chapters", 1, 5, 1)
 
 # --- Generate stories ---
 if st.button("Generate Stories"):
-    all_stories = []
-
     for chapter in range(1, num_chapters + 1):
         st.subheader(f"Generating Chapter {chapter}...")
         prompt = f"""
@@ -58,10 +65,11 @@ if st.button("Generate Stories"):
         placeholder = st.empty()
         generated_text = ""
 
+        # Encode prompt
         input_ids = tokenizer(prompt, return_tensors="pt").input_ids
         max_new_tokens = length * 2
 
-        # Streaming effect
+        # Streaming generation in chunks
         for i in range(0, max_new_tokens, 20):
             outputs = model.generate(
                 input_ids,
@@ -88,7 +96,6 @@ if st.button("Generate Stories"):
             "Story": generated_text
         }
         save_story(story_entry)
-        all_stories.append(story_entry)
 
 # --- Show previous stories ---
 if st.checkbox("Show Previous Stories / Chapters"):
