@@ -1,4 +1,4 @@
-streamlit
-torch
-transformers
-pandas
+streamlit>=1.25
+torch>=2.2
+transformers>=4.44
+pandas>=2.0
