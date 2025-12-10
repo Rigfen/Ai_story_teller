@@ -1,5 +1,5 @@
 import streamlit as st
-from transformers import AutoTokenizer, AutoModelForCausalLM
+
 import torch
 import pandas as pd
 from datetime import datetime
