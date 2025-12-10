@@ -1,15 +1,10 @@
 import streamlit as st
 from openai import OpenAI
-from dotenv import load_dotenv
-import os
 
-load_dotenv()
-
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Use Streamlit Secrets (Streamlit Cloud only)
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 st.set_page_config(page_title="AI Story Generator", page_icon="📚", layout="centered")
-
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 st.title("📚 AI Story Generator")
 st.write("Create custom stories using AI! Adjust the settings and generate a unique story.")
