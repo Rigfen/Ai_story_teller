@@ -3,14 +3,14 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 
 st.set_page_config(page_title="AI Story Generator", page_icon="📚", layout="centered")
-st.title("📚 AI Story Generator (BLOOM)")
-st.write("Create custom stories using BLOOM! Adjust the settings and generate a unique story.")
+st.title("📚 AI Story Generator (BLOOM-1B1)")
+st.write("Create custom stories using BLOOM-1B1! Adjust the settings and generate a unique story.")
 
-# --- Load BLOOM model once ---
+# --- Load BLOOM-1B1 model once ---
 @st.cache_resource(show_spinner=True)
 def load_model():
-    tokenizer = AutoTokenizer.from_pretrained("bigscience/bloom-560m")
-    model = AutoModelForCausalLM.from_pretrained("bigscience/bloom-560m")
+    tokenizer = AutoTokenizer.from_pretrained("bigscience/bloom-1b1")
+    model = AutoModelForCausalLM.from_pretrained("bigscience/bloom-1b1")
     return tokenizer, model
 
 tokenizer, model = load_model()
@@ -20,7 +20,7 @@ title = st.text_input("Story Title", "The Lost Kingdom")
 main_character = st.text_input("Main Character Name", "Aria")
 genre = st.selectbox("Genre", ["Fantasy", "Sci-Fi", "Horror", "Romance", "Adventure", "Mystery"])
 tone = st.selectbox("Tone", ["Lighthearted", "Serious", "Dark", "Funny", "Epic"])
-length = st.slider("Story Length (words)", 50, 500, 200)
+length = st.slider("Story Length (words)", 50, 800, 300)  # Increased max length for bigger model
 
 # --- Generate story ---
 if st.button("Generate Story"):
@@ -44,9 +44,4 @@ if st.button("Generate Story"):
         )
         story = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-    st.subheader("Your Generated Story:")
-    st.write(story)
-
-        story = response.choices[0].message.content
-        st.subheader("Your Generated Story:")
-        st.write(story)
+    st.subheader
