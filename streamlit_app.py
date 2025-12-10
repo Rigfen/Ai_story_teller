@@ -6,13 +6,12 @@ from datetime import datetime
 import os
 
 st.set_page_config(page_title="AI Story Generator", page_icon="📚", layout="centered")
-st.title("📚 AI Story Generator (BLOOM-1B1 Robust)")
-st.write("Generate stories live as BLOOM-1B1 writes them! Stories are saved and downloadable.")
+st.title("📚 AI Story Generator (BLOOM-1B1 Multi-Story)")
+st.write("Generate multiple stories or chapters live with BLOOM-1B1! Each story is saved and downloadable.")
 
-# --- File to save stories ---
 SAVE_FILE = "generated_stories.csv"
 
-# --- Load BLOOM-1B1 model once ---
+# --- Load model ---
 @st.cache_resource(show_spinner=True)
 def load_model():
     tokenizer = AutoTokenizer.from_pretrained("bigscience/bloom-1b1")
@@ -21,7 +20,7 @@ def load_model():
 
 tokenizer, model = load_model()
 
-# --- Function to safely save a story ---
+# --- Safe CSV save ---
 def save_story(entry):
     try:
         if os.path.exists(SAVE_FILE):
@@ -34,31 +33,35 @@ def save_story(entry):
         st.error(f"Error saving story: {e}")
 
 # --- User inputs ---
-title = st.text_input("Story Title", "The Lost Kingdom")
+title = st.text_input("Story/Book Title", "The Lost Kingdom")
 main_character = st.text_input("Main Character Name", "Aria")
 genre = st.selectbox("Genre", ["Fantasy", "Sci-Fi", "Horror", "Romance", "Adventure", "Mystery"])
 tone = st.selectbox("Tone", ["Lighthearted", "Serious", "Dark", "Funny", "Epic"])
-length = st.slider("Story Length (words)", 50, 800, 300)
+length = st.slider("Story/Chapter Length (words)", 50, 800, 300)
+num_chapters = st.slider("Number of Stories / Chapters", 1, 5, 1)  # Multi-story / chapters
 
-# --- Generate story ---
-if st.button("Generate Story"):
-    prompt = f"""
-    Write a story titled '{title}'. 
-    Main character: {main_character}. 
-    Genre: {genre}. 
-    Tone: {tone}. 
-    Length: about {length} words.
-    Make it engaging and creative.
-    """
+# --- Generate stories ---
+if st.button("Generate Stories"):
+    all_stories = []
 
-    placeholder = st.empty()
-    generated_text = ""
+    for chapter in range(1, num_chapters + 1):
+        st.subheader(f"Generating Chapter {chapter}...")
+        prompt = f"""
+        Write story/chapter {chapter} titled '{title}'. 
+        Main character: {main_character}. 
+        Genre: {genre}. 
+        Tone: {tone}. 
+        Length: about {length} words.
+        Make it engaging and creative.
+        """
 
-    with st.spinner("Generating story..."):
+        placeholder = st.empty()
+        generated_text = ""
+
         input_ids = tokenizer(prompt, return_tensors="pt").input_ids
         max_new_tokens = length * 2
 
-        # Generate in chunks to show streaming effect
+        # Streaming effect
         for i in range(0, max_new_tokens, 20):
             outputs = model.generate(
                 input_ids,
@@ -70,24 +73,25 @@ if st.button("Generate Story"):
             )
             decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
             generated_text = decoded
-            placeholder.markdown(f"**Your Generated Story:**\n\n{generated_text}")
+            placeholder.markdown(f"**Chapter {chapter}:**\n\n{generated_text}")
 
-    st.success("Story generation complete!")
+        st.success(f"Chapter {chapter} complete!")
 
-    # --- Save story ---
-    story_entry = {
-        "Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "Title": title,
-        "Main Character": main_character,
-        "Genre": genre,
-        "Tone": tone,
-        "Story": generated_text
-    }
-    save_story(story_entry)
-    st.info(f"Story saved to {SAVE_FILE}")
+        # --- Save chapter to CSV ---
+        story_entry = {
+            "Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "Title": title,
+            "Main Character": main_character,
+            "Genre": genre,
+            "Tone": tone,
+            "Chapter": chapter,
+            "Story": generated_text
+        }
+        save_story(story_entry)
+        all_stories.append(story_entry)
 
 # --- Show previous stories ---
-if st.checkbox("Show Previous Stories"):
+if st.checkbox("Show Previous Stories / Chapters"):
     if os.path.exists(SAVE_FILE):
         try:
             df = pd.read_csv(SAVE_FILE)
@@ -97,11 +101,11 @@ if st.checkbox("Show Previous Stories"):
     else:
         st.write("No stories generated yet.")
 
-# --- Download CSV ---
+# --- Download all stories ---
 if os.path.exists(SAVE_FILE):
     with open(SAVE_FILE, "rb") as f:
         st.download_button(
-            label="Download All Stories as CSV",
+            label="Download All Stories / Chapters as CSV",
             data=f,
             file_name="generated_stories.csv",
             mime="text/csv"
