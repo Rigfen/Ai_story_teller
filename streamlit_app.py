@@ -6,8 +6,8 @@ from datetime import datetime
 import os
 
 st.set_page_config(page_title="AI Story Generator", page_icon="📚", layout="centered")
-st.title("📚 AI Story Generator (BLOOM-1B1 Streaming + Auto Save)")
-st.write("Generate stories live as BLOOM-1B1 writes them! Each story is automatically saved.")
+st.title("📚 AI Story Generator (BLOOM-1B1 Robust)")
+st.write("Generate stories live as BLOOM-1B1 writes them! Stories are saved and downloadable.")
 
 # --- File to save stories ---
 SAVE_FILE = "generated_stories.csv"
@@ -20,6 +20,18 @@ def load_model():
     return tokenizer, model
 
 tokenizer, model = load_model()
+
+# --- Function to safely save a story ---
+def save_story(entry):
+    try:
+        if os.path.exists(SAVE_FILE):
+            df = pd.read_csv(SAVE_FILE)
+            df = pd.concat([df, pd.DataFrame([entry])], ignore_index=True)
+        else:
+            df = pd.DataFrame([entry])
+        df.to_csv(SAVE_FILE, index=False)
+    except Exception as e:
+        st.error(f"Error saving story: {e}")
 
 # --- User inputs ---
 title = st.text_input("Story Title", "The Lost Kingdom")
@@ -43,7 +55,6 @@ if st.button("Generate Story"):
     generated_text = ""
 
     with st.spinner("Generating story..."):
-        # Encode prompt
         input_ids = tokenizer(prompt, return_tensors="pt").input_ids
         max_new_tokens = length * 2
 
@@ -63,7 +74,7 @@ if st.button("Generate Story"):
 
     st.success("Story generation complete!")
 
-    # --- Save to CSV ---
+    # --- Save story ---
     story_entry = {
         "Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "Title": title,
@@ -72,20 +83,26 @@ if st.button("Generate Story"):
         "Tone": tone,
         "Story": generated_text
     }
-
-    if os.path.exists(SAVE_FILE):
-        df = pd.read_csv(SAVE_FILE)
-        df = pd.concat([df, pd.DataFrame([story_entry])], ignore_index=True)
-    else:
-        df = pd.DataFrame([story_entry])
-
-    df.to_csv(SAVE_FILE, index=False)
+    save_story(story_entry)
     st.info(f"Story saved to {SAVE_FILE}")
 
-# --- Optional: Display previously generated stories ---
+# --- Show previous stories ---
 if st.checkbox("Show Previous Stories"):
     if os.path.exists(SAVE_FILE):
-        df = pd.read_csv(SAVE_FILE)
-        st.dataframe(df)
+        try:
+            df = pd.read_csv(SAVE_FILE)
+            st.dataframe(df)
+        except Exception as e:
+            st.error(f"Cannot read CSV: {e}")
     else:
         st.write("No stories generated yet.")
+
+# --- Download CSV ---
+if os.path.exists(SAVE_FILE):
+    with open(SAVE_FILE, "rb") as f:
+        st.download_button(
+            label="Download All Stories as CSV",
+            data=f,
+            file_name="generated_stories.csv",
+            mime="text/csv"
+        )
