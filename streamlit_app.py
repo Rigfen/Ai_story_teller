@@ -5,24 +5,24 @@ import os
 
 # --- Page Setup ---
 st.set_page_config(page_title="AI Story Generator", page_icon="📚", layout="centered")
-st.title("📚 AI Story Generator (BLOOM-1B1 Multi-Chapter)")
-st.write("Generate multiple stories or chapters live with BLOOM-1B1! Each story is saved and downloadable.")
+st.title("📚 AI Story Generator (BLOOM-560M Multi-Chapter)")
+st.write("Generate multiple stories or chapters live with BLOOM-560M! Each story is saved and downloadable.")
 
 SAVE_FILE = "generated_stories.csv"
 CACHE_DIR = "./bloom_cache"  # Local cache for model
 
-# --- Load BLOOM-1B1 safely ---
+# --- Load BLOOM-560M safely ---
 @st.cache_resource(show_spinner=True)
 def load_model():
     try:
         from transformers import AutoTokenizer, AutoModelForCausalLM
         import torch
 
-        tokenizer = AutoTokenizer.from_pretrained("bigscience/bloom-1b1", cache_dir=CACHE_DIR)
-        model = AutoModelForCausalLM.from_pretrained("bigscience/bloom-1b1", cache_dir=CACHE_DIR)
+        tokenizer = AutoTokenizer.from_pretrained("bigscience/bloom-560m", cache_dir=CACHE_DIR)
+        model = AutoModelForCausalLM.from_pretrained("bigscience/bloom-560m", cache_dir=CACHE_DIR)
         return tokenizer, model
     except Exception as e:
-        st.error(f"Error loading BLOOM-1B1 model: {e}")
+        st.error(f"Error loading BLOOM-560M model: {e}")
         return None, None
 
 tokenizer, model = load_model()
